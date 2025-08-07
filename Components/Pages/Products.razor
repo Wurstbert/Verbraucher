@@ -1,0 +1,46 @@
+﻿@page "/products"
+@inject IDbContextFactory<VerbraucherContext> contextFacory
+@inject Repository repository
+@using Microsoft.EntityFrameworkCore
+@using System.Globalization
+@using Verbraucher.Entities
+@using Verbraucher.Persistence
+
+<div>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Vorbestimmter Schuldner</th>
+            </tr>
+        </thead>
+        <tbody>
+            @using (var context = contextFacory.CreateDbContext())
+            {
+                @foreach (var product in context.Products.OrderBy(p => p.Name))
+                {
+                    <tr>
+                        <td>@product.Name</td>
+                        <td>@product.DefaultDebtor</td>
+                        <td><button @onclick="() => SetResponsible(product.Id, Debtor.Maria)">M</button>
+                            <button @onclick="() => SetResponsible(product.Id, Debtor.Stefan)">S</button>
+                            <button @onclick="() => SetResponsible(product.Id, Debtor.Beide)">B</button>
+                            <button @onclick="() => SetResponsible(product.Id, null)">X</button>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+
+
+@code {
+
+    private void SetResponsible(Guid productId, Debtor? debtor)
+    {
+        repository.SetProductDefaultDebtor(productId, debtor);
+        StateHasChanged();
+    }
+}

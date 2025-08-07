@@ -1,0 +1,55 @@
+﻿@page "/debtoverview"
+@using System.Globalization
+@using Verbraucher.Entities
+@using Verbraucher.Persistence
+@inject Repository repository
+
+<div>
+    <div>Ausgegeben für Marias Erzeugnisse: @GetSumAsString(Debtor.Maria)</div>
+    <div>Ausgegeben für Stefans Erzeugnisse: @GetSumAsString(Debtor.Stefan)</div>
+    <div>Ausgegeben für gemeinsame Erzeugnisse: @GetSumAsString(Debtor.Beide)</div>
+    <div>Maria schuldet Stefan: @GetStefanDebtSumAsString()</div>
+</div>
+
+
+@code {
+    private decimal MariaSumme { get; set; }
+    private decimal StefanSumme { get; set; }
+    private decimal GemeinschaftSumme { get; set; }
+    private decimal StefanSchulden { get; set; }
+
+    private List<InvoiceLineItem> InvoiceLineItems { get; set; } = new List<InvoiceLineItem>();
+
+    protected override void OnInitialized()
+    {
+        InvoiceLineItems = repository.GetInvoiceLineItems();
+    }
+
+    private string? GetSumAsString(Debtor debtor)
+    {
+        string? sum = string.Empty;
+
+        sum = InvoiceLineItems
+            .Where(item => item.Responsible == debtor.ToString() && !item.Paid.GetValueOrDefault(false))
+            .Sum(item => item.PriceInEuro + item.DiscountInEuro.GetValueOrDefault(0))?
+            .ToString("C", CultureInfo.CreateSpecificCulture("de-DE"));
+
+        return sum;
+    }
+
+    private string? GetStefanDebtSumAsString()
+    {
+        string? debtSum = string.Empty;
+
+        var sum = InvoiceLineItems
+            .Where(item => item.Responsible == Debtor.Maria.ToString() && !item.Paid.GetValueOrDefault(false))
+            .Sum(item => item.PriceInEuro + item.DiscountInEuro.GetValueOrDefault(0))
+            + (InvoiceLineItems
+            .Where(item => item.Responsible == Debtor.Beide.ToString() && !item.Paid.GetValueOrDefault(false))
+            .Sum(item => item.PriceInEuro + item.DiscountInEuro.GetValueOrDefault(0)) / 2);
+
+        debtSum = sum?.ToString("C", CultureInfo.CreateSpecificCulture("de-DE"));
+
+        return debtSum;
+    }
+}

@@ -1,0 +1,29 @@
+﻿@using Verbraucher.Components.Layout
+<!DOCTYPE html>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"> <!--https://fontawesome.com/v4-->
+<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'> <!--https://boxicons.com-->
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["Verbraucher.styles.css"]" />
+    <ImportMap />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+    <div class="main-container">
+        <div class="main-child">
+            <Routes @rendermode="InteractiveServer" />
+        </div>
+        <div class="main-child-bottom">
+            <BottomMenu @rendermode="InteractiveServer" />
+        </div>
+    </div>
+    <script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>

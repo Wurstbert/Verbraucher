@@ -1,0 +1,136 @@
+﻿@page "/scancode"
+@rendermode InteractiveServer
+@inject IJSRuntime Js
+@inject PdfService PdfService
+@inject NavigationManager Navigation
+@using ReactorBlazorQRCodeScanner
+@using Verbraucher.Services
+@using Microsoft.Extensions.Logging;
+
+<PageTitle>Verbraucher</PageTitle>
+
+@if (IsLoading)
+{
+    StopScanning();
+    <div class="high center">
+        <div class="spinner"></div>
+    </div>
+}
+else
+{
+    <div>Bitte QR-Kod einlesen</div>
+    <QRCodeScanner Width="75%" />
+    StartScanning();
+}
+
+<button @onclick="() => IsLoading = !IsLoading">M</button>
+
+
+
+@code {
+
+    private QRCodeScannerJsInterop? QrCodeScannerJsInterop;
+    private Action<string>? OnQrCodeScanAction;
+
+    private bool IsScanningDone { get; set; } = false;
+    private bool IsLoading { get; set; } = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        //var invoiceId = PdfService.Parse("C:\\Zufall\\a80eea90-757b-432d-9910-4285c096a2e1.pdf").ToString();
+        //Navigation.NavigateTo($"/invoicelineitems/{invoiceId.ToString()}");
+        // if (!firstRender || IsScanningDone)
+        // {
+        //     return;
+        // }
+
+        ///
+        //pdfService.Parse("C:\\Zufall\\2c2f9d79-0b1f-4051-84cc-36d914e04020.pdf");
+        //pdfService.Parse("C:\\Zufall\\286ca0df-d987-4d14-b359-f68f861e0253.pdf");
+        //navigation.NavigateTo("/productsoverview");
+        ///
+        //await StartScanning();
+    }
+
+    private async Task StartScanning()
+    {
+        OnQrCodeScanAction = (code) => OnQrCodeScan(code);
+
+        QrCodeScannerJsInterop = new QRCodeScannerJsInterop(Js);
+        await QrCodeScannerJsInterop.Init(OnQrCodeScanAction);
+    }
+
+    private async Task StopScanning()
+    {
+        if (QrCodeScannerJsInterop != null)
+        {
+            await QrCodeScannerJsInterop.StopRecording();
+        }
+    }
+
+    private void OnQrCodeScan(string code)
+    {
+        //Console.WriteLine($"OnQrCodeScan {code}");
+        //QrCode = code;
+        // string[] values = { code.Replace("id", "pdf"), "_blank" };
+        // CancellationToken token = new CancellationToken(false);
+        // JS.InvokeAsync<object>("open", token, values);
+
+        string fileNamePdf = $"/home/wursti/Public/RawInvoices/{code.Split("/").Last()}.pdf";
+        string fileNameHtml = $"/home/wursti/Public/RawInvoices/{code.Split("/").Last()}.html";
+
+        using ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
+        ILogger logger = factory.CreateLogger("Program");
+        logger.LogInformation($"Hello World! {fileNamePdf}");
+
+        if (File.Exists(fileNamePdf))
+        {
+            return;
+        }
+
+        StopScanning();
+        IsScanningDone = true;
+        IsLoading = true;
+        StateHasChanged();
+
+        // Aufruf der Landeseite vortäuschen, um PDF-Erstellung anzustoßen
+        for (int i = 1; i <= 5; i++)
+        {
+            using (var client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0");
+                client.DefaultRequestHeaders.Accept.ParseAdd("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+                client.DefaultRequestHeaders.AcceptLanguage.ParseAdd("de,en-US;q=0.7,en;q=0.3");
+                client.DefaultRequestHeaders.Add("Sec-Fetch-User", "?1");
+                client.DefaultRequestHeaders.Add("Sec-Fetch-Dest", "document");
+                client.DefaultRequestHeaders.Add("Sec-Fetch-Mode", "navigate");
+                client.DefaultRequestHeaders.Add("Sec-Fetch-Site", "none");
+
+                using (var stream = client.GetStreamAsync(code))
+                {
+                    using (var fileStream = new FileStream(fileNameHtml, FileMode.OpenOrCreate))
+                    {
+                        stream.Result.CopyTo(fileStream);
+                    }
+                }
+            }
+
+            Thread.Sleep(i * 2000);
+        }
+
+
+        using (var client = new HttpClient())
+        {
+            using (var stream = client.GetStreamAsync(code.Replace("id", "pdf")))
+            {
+                using (var fileStream = new FileStream(fileNamePdf, FileMode.OpenOrCreate))
+                {
+                    stream.Result.CopyTo(fileStream);
+                }
+            }
+        }
+
+        var invoiceId = PdfService.Parse(fileNamePdf).ToString();
+        Navigation.NavigateTo($"/invoicelineitems/{invoiceId.ToString()}");
+    }
+}

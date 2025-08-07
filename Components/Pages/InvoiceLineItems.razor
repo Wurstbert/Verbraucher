@@ -1,0 +1,73 @@
+﻿@page "/invoicelineitems/{invoiceId:guid?}"
+@inject IDbContextFactory<VerbraucherContext> contextFacory
+@inject Repository repository
+@using Microsoft.EntityFrameworkCore
+@using System.Globalization
+@using Verbraucher.Entities
+@using Verbraucher.Persistence
+
+
+@using (var context = contextFacory.CreateDbContext())
+{
+    @foreach (var invoice in invoiceId is null
+      ? context.Invoices.Include(invoice => invoice.InvoiceLineItems).ThenInclude(item => item.Product)
+      .OrderByDescending(invoice => invoice.IssuedAt)
+      : context.Invoices.Where(invoice => invoice.Id == invoiceId).Include(invoice => invoice.InvoiceLineItems).ThenInclude(item => item.Product)
+      .OrderByDescending(invoice => invoice.IssuedAt))
+    {
+        <div class="invoice-header-text">@invoice.IssuedAt?.ToString("dd.MM.yyyy")</div>
+        <div class="invoice-line-item-container">
+            @foreach (var item in invoice.InvoiceLineItems)
+            {
+                <div class="invoice-line-item-child">
+                    <div class="invoice-line-item-upper-container">
+                        <div class="invoice-line-item-quantity-unit text-light">@item.Quantity @item.Unit?.Replace("Stück", "x")</div>
+                        <div class="invoice-line-item-product">@item.Product.Name</div>
+                        <div class="invoice-line-item-price text-light">@((item.PriceInEuro + item.DiscountInEuro.GetValueOrDefault(0))?.ToString("C", CultureInfo.CreateSpecificCulture("de-DE")))</div>
+                    </div>
+                    <div class="invoice-line-item-lower-container">
+                        <button class="debtor-button debtor-button-maria text-light @GetIsActive(item, Debtor.Maria)" @onclick="() => SetResponsible(item, Debtor.Maria)"><i class='bx bx-female-sign'></i></button>
+                        <button class="debtor-button debtor-button-stefan text-light @GetIsActive(item, Debtor.Stefan)" @onclick="() => SetResponsible(item, Debtor.Stefan)"><i class='bx bx-male-sign'></i></button>
+                        <button class="debtor-button debtor-button-both text-light @GetIsActive(item, Debtor.Beide)" @onclick="() => SetResponsible(item, Debtor.Beide)"><i class='bx bx-male-female'></i></button>
+                        <!--<button class="debtor-button text-light" @onclick="() => SetResponsible(item, null)">
+                        <i class="fa fa-eraser" aria-hidden="true"></i>
+                        </button> -->
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+
+@code {
+    [Parameter]
+    public Guid? invoiceId { get; set; }
+
+    private void SetResponsible(InvoiceLineItem item, Debtor? debtor)
+    {
+        if (item.Responsible != null && item.Responsible == debtor?.ToString())
+        {
+            // Schuldner abwählen
+            repository.SetInvoiceLineItemDebtor(item.Id, null);
+        }
+        else
+        {
+            // Schuldner anwählen
+            repository.SetInvoiceLineItemDebtor(item.Id, debtor);
+        }
+
+        // Bei neuem Product auch gleich den vorbestimmten Schuldner setzen
+        if (item.ContainsNewProduct.GetValueOrDefault(false))
+        {
+            repository.SetProductDefaultDebtor(item.ProductId, debtor);
+        }
+
+        StateHasChanged();
+    }
+
+    private string GetIsActive(InvoiceLineItem item, Debtor? debtor)
+    {
+        return item.Responsible == debtor?.ToString() ? "active" : "";
+    }
+}
