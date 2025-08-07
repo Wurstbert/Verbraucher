@@ -1,3 +1,5 @@
 # Verbraucher
 
-Ermöglicht die Erfassung und Zuordnung von Einkäufen aus dem Konsum zu Stefan, Maria oder beiden und ermittelt den Schuldenstand.
+Ermöglicht die Erfassung und Zuordnung von Einkäufen aus dem Konsum zu Maria, Stefan oder beiden und ermittelt den Schuldenstand.
+
+![Alt text](Screenshot1.png?raw=true "Einkaufsübersicht")
